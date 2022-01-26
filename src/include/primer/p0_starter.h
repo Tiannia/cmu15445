@@ -35,7 +35,7 @@ class Matrix {
    * @param cols The number of columns
    *
    */
-  Matrix(int rows, int cols) : rows_(rows), cols_(cols) { linear_ = new int[rows * cols]; }
+  Matrix(int rows, int cols) : rows_(rows), cols_(cols) { linear_ = new T[rows * cols]; }
 
   /** The number of rows in the matrix */
   int rows_;
@@ -114,9 +114,9 @@ class RowMatrix : public Matrix<T> {
    */
   RowMatrix(int rows, int cols) : Matrix<T>(rows, cols) {
     // - Use **data_ to point to corresponding elements of the `linear` array.
-    data_ = new int *[rows];
+    data_ = new T *[rows];
     for (int i = 0; i < rows; ++i) {
-      data_[i] = Matrix<T>::linear_ + (i * cols);
+      data_[i] = this->linear_ + (i * cols);
     }
   }
 
@@ -124,13 +124,13 @@ class RowMatrix : public Matrix<T> {
    * TODO(P0): Add implementation
    * @return The number of rows in the matrix
    */
-  int GetRowCount() const override { return Matrix<T>::rows_; }
+  int GetRowCount() const override { return this->rows_; }
 
   /**
    * TODO(P0): Add implementation
    * @return The number of columns in the matrix
    */
-  int GetColumnCount() const override { return Matrix<T>::cols_; }
+  int GetColumnCount() const override { return this->cols_; }
 
   /**
    * TODO(P0): Add implementation
@@ -193,7 +193,7 @@ class RowMatrix : public Matrix<T> {
     }
     // linear_.assign(source.begin(), source.end());
     for (size_t i = 0; i < source.size(); ++i) {
-      Matrix<T>::linear_[i] = source[i];
+      this->linear_[i] = source[i];
     }
   }
 
