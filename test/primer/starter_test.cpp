@@ -46,12 +46,12 @@ TEST(StarterTest, InitializationTest) {
   auto matrix = std::make_unique<RowMatrix<int>>(2, 2);
 
   // Source contains too few elements
-  std::vector<int> source0(4);
+  std::vector<int> source0(3);
   std::iota(source0.begin(), source0.end(), 0);
   EXPECT_TRUE(ThrowsBustubException([&]() { matrix->FillFrom(source0); }, ExceptionType::OUT_OF_RANGE));
 
   // Source contains too many elements
-  std::vector<int> source1(4);
+  std::vector<int> source1(5);
   std::iota(source1.begin(), source1.end(), 0);
   EXPECT_TRUE(ThrowsBustubException([&]() { matrix->FillFrom(source1); }, ExceptionType::OUT_OF_RANGE));
 
@@ -68,7 +68,7 @@ TEST(StarterTest, InitializationTest) {
   }
 }
 
-TEST(StarterTest, DISABLED_ElementAccessTest) {
+TEST(StarterTest, ElementAccessTest) {
   auto matrix = std::make_unique<RowMatrix<int>>(2, 2);
 
   std::vector<int> source(4);
@@ -115,7 +115,7 @@ TEST(StarterTest, DISABLED_ElementAccessTest) {
 }
 
 /** Test that matrix addition works as expected */
-TEST(StarterTest, DISABLED_AdditionTest) {
+TEST(StarterTest, AdditionTest) {
   auto matrix0 = std::make_unique<RowMatrix<int>>(3, 3);
 
   const std::vector<int> source0{1, 4, 2, 5, 2, -1, 0, 3, 1};
@@ -155,7 +155,7 @@ TEST(StarterTest, DISABLED_AdditionTest) {
 }
 
 /** Test that matrix multiplication works as expected */
-TEST(StarterTest, DISABLED_MultiplicationTest) {
+TEST(StarterTest, MultiplicationTest) {
   const std::vector<int> source0{1, 2, 3, 4, 5, 6};
   auto matrix0 = std::make_unique<RowMatrix<int>>(2, 3);
   matrix0->FillFrom(source0);
@@ -184,6 +184,26 @@ TEST(StarterTest, DISABLED_MultiplicationTest) {
   EXPECT_EQ(2, product->GetRowCount());
   EXPECT_EQ(2, product->GetColumnCount());
 
+  for (int i = 0; i < product->GetRowCount(); i++) {
+    for (int j = 0; j < product->GetColumnCount(); j++) {
+      EXPECT_EQ(expected[i * product->GetColumnCount() + j], product->GetElement(i, j));
+    }
+  }
+}
+
+TEST(StarterTest, GEMMTest) {
+  const std::vector<int> source0{1, 2, 3, 4};
+  auto matrix0 = std::make_unique<RowMatrix<int>>(2, 2);
+  auto matrix1 = std::make_unique<RowMatrix<int>>(2, 2);
+  auto matrix2 = std::make_unique<RowMatrix<int>>(2, 2);
+  matrix0->FillFrom(source0);
+  matrix1->FillFrom(source0);
+  matrix2->FillFrom(source0);
+
+  // The expected result of multiplication
+  const std::vector<int> expected{8, 12, 18, 26};
+
+  auto product = RowMatrixOperations<int>::GEMM(matrix0.get(), matrix1.get(), matrix2.get());
   for (int i = 0; i < product->GetRowCount(); i++) {
     for (int j = 0; j < product->GetColumnCount(); j++) {
       EXPECT_EQ(expected[i * product->GetColumnCount() + j], product->GetElement(i, j));
