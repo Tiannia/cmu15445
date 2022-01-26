@@ -117,6 +117,7 @@ class RowMatrix : public Matrix<T> {
     data_ = new T *[rows];
     for (int i = 0; i < rows; ++i) {
       data_[i] = this->linear_ + (i * cols);
+      a;
     }
   }
 
