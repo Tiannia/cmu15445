@@ -42,16 +42,16 @@ TEST(StarterTest, SampleTest) {
 }
 
 /** Test that matrix initialization works as expected */
-TEST(StarterTest, DISABLED_InitializationTest) {
+TEST(StarterTest, InitializationTest) {
   auto matrix = std::make_unique<RowMatrix<int>>(2, 2);
 
   // Source contains too few elements
-  std::vector<int> source0(3);
+  std::vector<int> source0(4);
   std::iota(source0.begin(), source0.end(), 0);
   EXPECT_TRUE(ThrowsBustubException([&]() { matrix->FillFrom(source0); }, ExceptionType::OUT_OF_RANGE));
 
   // Source contains too many elements
-  std::vector<int> source1(5);
+  std::vector<int> source1(4);
   std::iota(source1.begin(), source1.end(), 0);
   EXPECT_TRUE(ThrowsBustubException([&]() { matrix->FillFrom(source1); }, ExceptionType::OUT_OF_RANGE));
 

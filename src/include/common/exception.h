@@ -113,4 +113,10 @@ class NotImplementedException : public Exception {
   explicit NotImplementedException(const std::string &msg) : Exception(ExceptionType::NOT_IMPLEMENTED, msg) {}
 };
 
+class OutOfRangeException : public Exception {
+ public:
+  OutOfRangeException() = delete;
+  explicit OutOfRangeException(const std::string &msg) : Exception(ExceptionType::OUT_OF_RANGE, msg) {}
+};
+
 }  // namespace bustub
