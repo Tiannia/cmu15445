@@ -17,7 +17,6 @@
 #include <cstdint>
 
 namespace bustub {
-
 /** Cycle detection is performed every CYCLE_DETECTION_INTERVAL milliseconds. */
 extern std::chrono::milliseconds cycle_detection_interval;
 

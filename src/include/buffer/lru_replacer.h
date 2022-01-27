@@ -13,6 +13,7 @@
 #pragma once
 
 #include <list>
+#include <unordered_map>
 #include <mutex>  // NOLINT
 #include <vector>
 
@@ -23,6 +24,7 @@ namespace bustub {
 
 /**
  * LRUReplacer implements the Least Recently Used replacement policy.
+ * Physical pages are often called frames, while virtual address space pages are often called pages
  */
 class LRUReplacer : public Replacer {
  public:
@@ -47,6 +49,10 @@ class LRUReplacer : public Replacer {
 
  private:
   // TODO(student): implement me!
+  std::mutex mutex_;
+  std::list<frame_id_t> LRUList;
+  std::unordered_map<frame_id_t, std::list<frame_id_t>::iterator> LRUHash;
+  size_t capacity;
 };
 
 }  // namespace bustub
