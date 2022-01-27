@@ -86,7 +86,6 @@ Page *BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) {
     if (pages_[P].IsDirty()) {
       FlushPgImp(pages_[P].GetPageId());
     }
-
     // remove page_id -> P in page_table
     for (const auto &it : page_table_) {
       if (it.second == P) {
@@ -95,7 +94,6 @@ Page *BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) {
       }
     }
   }
-
   pages_[P].page_id_ = newPageId;
   pages_[P].is_dirty_ = false;
   pages_[P].pin_count_ = 1;
@@ -128,13 +126,11 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
     free_list_.pop_front();
   } else {
     replacer_->Victim(&replacementPageId);
-
     if (pages_[replacementPageId].IsDirty()) {
       FlushPgImp(pages_[replacementPageId].GetPageId());
       // LOG_DEBUG("WritePage! Page_id is %d, frame_id is %d", pages_[replacementPageId].GetPageId(),
       // replacementPageId);
     }
-
     for (const auto &it : page_table_) {
       if (it.second == replacementPageId) {
         page_table_.erase(it.first);
@@ -142,7 +138,6 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
       }
     }
   }
-
   page_table_.insert({page_id, replacementPageId});
   pages_[replacementPageId].page_id_ = page_id;
   pages_[replacementPageId].is_dirty_ = false;
@@ -166,6 +161,7 @@ bool BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) {
     frame_id_t P = page_table_[page_id];
     if (pages_[P].GetPinCount() != 0) return false;
     page_table_.erase(page_id);
+    //should we flushpg into disk if it is dirty?
     pages_[P].ResetMemory();
     pages_[P].is_dirty_ = false;
     pages_[P].pin_count_ = 0;
