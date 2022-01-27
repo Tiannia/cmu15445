@@ -188,7 +188,7 @@ class RowMatrix : public Matrix<T> {
    */
   void FillFrom(const std::vector<T> &source) override {
     // throw NotImplementedException{"RowMatrix::FillFrom() not implemented."};
-    if ((int)source.size() != GetRowCount() * GetColumnCount()) {
+    if (static_cast<int>(source.size()) != GetRowCount() * GetColumnCount()) {
       throw OutOfRangeException{"Input array does not contain the required number of elements."};
     }
     // linear_.assign(source.begin(), source.end());
