@@ -19,10 +19,10 @@ LRUReplacer::LRUReplacer(size_t num_pages) : capacity(num_pages) {}
 LRUReplacer::~LRUReplacer() = default;
 
 bool LRUReplacer::Victim(frame_id_t *frame_id) {
+  std::lock_guard<std::mutex> lock(mutex_);
   if (0 == Size()) {
     return false;
   }
-  std::lock_guard<std::mutex> lock(mutex_);
   *frame_id = LRUList.back();
   LRUHash.erase(LRUList.back());
   LRUList.pop_back();  // remove least recently use.

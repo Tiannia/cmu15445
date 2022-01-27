@@ -115,6 +115,8 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
     pages_[requestedPageId].pin_count_ += 1;
     //·in LRUreplacer or ·not int LRUreplacer, we pin the frame_id
     replacer_->Pin(requestedPageId);
+    // LOG_DEBUG("page_table count it! In parallel mode, pool %d, frame_id %d, page_id %d", page_id % num_instances_,
+    //           requestedPageId, page_id);
     return &pages_[requestedPageId];
   }
   if (0 == free_list_.size() && 0 == replacer_->Size()) {
@@ -157,7 +159,7 @@ bool BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) {
     frame_id_t P = page_table_[page_id];
     if (pages_[P].GetPinCount() != 0) return false;
     page_table_.erase(page_id);
-    //should we flushpg into disk if it is dirty?
+    // should we flushpg into disk if it is dirty?
     pages_[P].ResetMemory();
     pages_[P].is_dirty_ = false;
     pages_[P].pin_count_ = 0;
