@@ -49,6 +49,7 @@ BufferPoolManagerInstance::~BufferPoolManagerInstance() {
 
 bool BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) {
   // Make sure you call DiskManager::WritePage!
+  std::lock_guard<std::mutex> lock(latch_);
   if (page_id == INVALID_PAGE_ID || !page_table_.count(page_id)) {
     return false;
   }
@@ -60,6 +61,7 @@ bool BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) {
 
 void BufferPoolManagerInstance::FlushAllPgsImp() {
   // You can do it!
+  std::lock_guard<std::mutex> lock(latch_);
   for (auto it : page_table_) {
     disk_manager_->WritePage(it.first, pages_[it.second].GetData());
   }
@@ -85,15 +87,10 @@ Page *BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) {
     // LOG_DEBUG("frame_id is %d", P);
     // If P is dirty, we must flush it first then update P's metadata.
     if (pages_[P].IsDirty()) {
-      FlushPgImp(pages_[P].GetPageId());
+      disk_manager_->WritePage(pages_[P].GetPageId(), pages_->GetData());
     }
     // remove page_id -> P in page_table
-    for (const auto &it : page_table_) {
-      if (it.second == P) {
-        page_table_.erase(it.first);
-        break;
-      }
-    }
+    page_table_.erase(pages_[P].GetPageId());
   }
   pages_[P].page_id_ = newPageId;
   pages_[P].is_dirty_ = false;
@@ -130,16 +127,11 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
   } else {
     replacer_->Victim(&replacementPageId);
     if (pages_[replacementPageId].IsDirty()) {
-      FlushPgImp(pages_[replacementPageId].GetPageId());
+      disk_manager_->WritePage(pages_[replacementPageId].GetPageId(), pages_[replacementPageId].GetData());
       // LOG_DEBUG("WritePage! Page_id is %d, frame_id is %d", pages_[replacementPageId].GetPageId(),
       // replacementPageId);
     }
-    for (const auto &it : page_table_) {
-      if (it.second == replacementPageId) {
-        page_table_.erase(it.first);
-        break;
-      }
-    }
+    page_table_.erase(pages_[replacementPageId].GetPageId());
   }
   page_table_.insert({page_id, replacementPageId});
   pages_[replacementPageId].page_id_ = page_id;
