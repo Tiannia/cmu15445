@@ -37,9 +37,9 @@ bool HASH_TABLE_BUCKET_TYPE::Insert(KeyType key, ValueType value, KeyComparator 
     if (!IsReadable(i)) {  // isempty
       array_[i].first = key;
       array_[i].second = value;
-      readable_[i / 8] |= (0x01 << (i % 8));
+      readable_[i / 8] |= (0x01 << i % 8);
       //if index->i at an unoccupied pos, we set the occupied_[pos] to 1
-      occupied_[i / 8] |= (0x01 << (i % 8)); 
+      occupied_[i / 8] |= (0x01 << i % 8); 
       return true;
     }
   }
