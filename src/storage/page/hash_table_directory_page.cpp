@@ -28,6 +28,13 @@ uint32_t HashTableDirectoryPage::GetGlobalDepth() { return global_depth_; }
 
 uint32_t HashTableDirectoryPage::GetGlobalDepthMask() { return (1 << global_depth_) - 1; }
 
+bool HashTableDirectoryPage::CanIncrGlobalDepth(){
+  if(0x01 << (global_depth_ + 1) << DIRECTORY_ARRAY_SIZE){
+    return true;
+  }
+  return false;
+}
+
 void HashTableDirectoryPage::IncrGlobalDepth() { global_depth_++; }
 
 void HashTableDirectoryPage::DecrGlobalDepth() { global_depth_--; }

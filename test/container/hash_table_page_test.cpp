@@ -42,7 +42,6 @@ TEST(HashTablePageTest, DirectoryPageSampleTest) {
   for (unsigned i = 0; i < 8; i++) {
     directory_page->SetBucketPageId(i, i);
   }
-
   // check for correct bucket page IDs
   for (int i = 0; i < 8; i++) {
     EXPECT_EQ(i, directory_page->GetBucketPageId(i));
