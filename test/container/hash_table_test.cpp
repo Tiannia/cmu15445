@@ -24,7 +24,7 @@ namespace bustub {
 // NOLINTNEXTLINE
 
 // NOLINTNEXTLINE
-TEST(HashTableTest, DISABLED_SampleTest) {
+TEST(HashTableTest, SampleTest) {
   auto *disk_manager = new DiskManager("test.db");
   auto *bpm = new BufferPoolManagerInstance(50, disk_manager);
   ExtendibleHashTable<int, int, IntComparator> ht("blah", bpm, IntComparator(), HashFunction<int>());
@@ -39,7 +39,6 @@ TEST(HashTableTest, DISABLED_SampleTest) {
   }
 
   ht.VerifyIntegrity();
-
   // check if the inserted values are all there
   for (int i = 0; i < 5; i++) {
     std::vector<int> res;

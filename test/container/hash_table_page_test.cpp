@@ -76,7 +76,6 @@ TEST(HashTablePageTest, BucketPageSampleTest) {
     EXPECT_EQ(i, bucket_page->KeyAt(i));
     EXPECT_EQ(i, bucket_page->ValueAt(i));
   }
-
   // remove a few pairs
   for (unsigned i = 0; i < 10; i++) {
     if (i % 2 == 1) {

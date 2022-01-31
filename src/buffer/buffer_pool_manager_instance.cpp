@@ -113,7 +113,7 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
   if (page_table_.count(page_id)) {
     frame_id_t requestedPageId = page_table_[page_id];
     pages_[requestedPageId].pin_count_ += 1;
-    //·in LRUreplacer or ·not int LRUreplacer, we pin the frame_id
+    // whether in LRUreplacer or not, we pin the frame_id
     replacer_->Pin(requestedPageId);
     // LOG_DEBUG("page_table count it! In parallel mode, pool %d, frame_id %d, page_id %d", page_id % num_instances_,
     //           requestedPageId, page_id);
