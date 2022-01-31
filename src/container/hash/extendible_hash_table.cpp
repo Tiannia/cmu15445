@@ -221,7 +221,7 @@ bool HASH_TABLE_TYPE::Remove(Transaction *transaction, const KeyType &key, const
     Merge(transaction, key, value);
     buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);
     buffer_pool_manager_->UnpinPage(bucket_page_id, true, nullptr);
-    buffer_pool_manager_->DeletePage(bucket_page_id);
+    buffer_pool_manager_->DeletePage(bucket_page_id); //Remember to unpin before delete
     table_latch_.WUnlock();
     return success;
   }
