@@ -81,13 +81,11 @@ HashTableDirectoryPage *HASH_TABLE_TYPE::FetchDirectoryPage() {
 }
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
-HASH_TABLE_BUCKET_TYPE *HASH_TABLE_TYPE::FetchBucketPage(page_id_t bucket_page_id) {
+std::pair<Page *, HASH_TABLE_BUCKET_TYPE *> HASH_TABLE_TYPE::FetchBucketPage(page_id_t bucket_page_id) {
   Page *page = buffer_pool_manager_->FetchPage(bucket_page_id, nullptr);
-  if (page != nullptr) {
-    auto bucket_page = reinterpret_cast<HASH_TABLE_BUCKET_TYPE *>(page->GetData());
-    return bucket_page;
-  }
-  return nullptr;
+  auto bucket_page = reinterpret_cast<HASH_TABLE_BUCKET_TYPE *>(page->GetData());
+  //return std::pair<Page*, HASH_TABLE_BUCKET_TYPE*>(page, bucket_page);
+  return {page, bucket_page};
 }
 
 /*****************************************************************************
@@ -95,15 +93,16 @@ HASH_TABLE_BUCKET_TYPE *HASH_TABLE_TYPE::FetchBucketPage(page_id_t bucket_page_i
  *****************************************************************************/
 template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_TYPE::GetValue(Transaction *transaction, const KeyType &key, std::vector<ValueType> *result) {
-  HashTableDirectoryPage *dir_page = FetchDirectoryPage();
   table_latch_.RLock();
+  HashTableDirectoryPage *dir_page = FetchDirectoryPage();
   page_id_t bucket_page_id = KeyToPageId(key, dir_page);
-  HASH_TABLE_BUCKET_TYPE *bucket_page = FetchBucketPage(bucket_page_id);
+  auto [page, bucket_page] = FetchBucketPage(bucket_page_id);
+  page->RLatch();
   bool success = bucket_page->GetValue(key, comparator_, result);
+  page->RUnlatch();
   buffer_pool_manager_->UnpinPage(bucket_page_id, false, nullptr);
   buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);
   table_latch_.RUnlock();
-
   return success;
 }
 
@@ -112,40 +111,33 @@ bool HASH_TABLE_TYPE::GetValue(Transaction *transaction, const KeyType &key, std
  *****************************************************************************/
 template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_TYPE::Insert(Transaction *transaction, const KeyType &key, const ValueType &value) {
-  // the lock is so complicated.
-  table_latch_.WLock();
+  table_latch_.RLock();
   HashTableDirectoryPage *dir_page = FetchDirectoryPage();
   page_id_t bucket_page_id = KeyToPageId(key, dir_page);
-  HASH_TABLE_BUCKET_TYPE *bucket_page = FetchBucketPage(bucket_page_id);
-  if (bucket_page->Insert(key, value, comparator_)) {
-    buffer_pool_manager_->UnpinPage(bucket_page_id, true, nullptr);
-    buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);
-    table_latch_.WUnlock();
-    return true;
-  }
-
+  auto [page, bucket_page] = FetchBucketPage(bucket_page_id);
+  page->WLatch();
   if (bucket_page->IsFull()) {
-    if (SplitInsert(transaction, key, value)) {
-      buffer_pool_manager_->UnpinPage(bucket_page_id, false, nullptr);
-      buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);
-      table_latch_.WUnlock();
-      return true;
-    }
+    page->WUnlatch();
+    buffer_pool_manager_->UnpinPage(bucket_page_id, false, nullptr);
+    buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);
+    table_latch_.RUnlock();
+    return SplitInsert(transaction, key, value); 
   }
-
-  // duplicate KV and SplitInsert false
-  buffer_pool_manager_->UnpinPage(bucket_page_id, false, nullptr);
+  bool success = bucket_page->Insert(key, value, comparator_);
+  page->WUnlatch();
+  buffer_pool_manager_->UnpinPage(bucket_page_id, success, nullptr);
   buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);
-  table_latch_.WUnlock();
-  return false;
+  table_latch_.RUnlock();
+  return success;
 }
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_TYPE::SplitInsert(Transaction *transaction, const KeyType &key, const ValueType &value) {
+  table_latch_.WLock();
   HashTableDirectoryPage *dir_page = FetchDirectoryPage();
   uint32_t bucket_idx = KeyToDirectoryIndex(key, dir_page);
   page_id_t bucket_page_id = dir_page->GetBucketPageId(bucket_idx);
-  HASH_TABLE_BUCKET_TYPE *bucket_page = FetchBucketPage(bucket_page_id);
+  auto [page, bucket_page] = FetchBucketPage(bucket_page_id);
 
   // local depth equals to global depth
   if (dir_page->GetLocalDepth(bucket_idx) == dir_page->GetGlobalDepth()) {
@@ -161,13 +153,15 @@ bool HASH_TABLE_TYPE::SplitInsert(Transaction *transaction, const KeyType &key, 
     } else {
       buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);
       buffer_pool_manager_->UnpinPage(bucket_page_id, false, nullptr);
+      table_latch_.WUnlock();
       return false;
     }
   }
-
   // local depth less than global depth
   if (dir_page->GetLocalDepth(bucket_idx) < dir_page->GetGlobalDepth()) {
+    page->WLatch();
     // We get a new bucket page
+    bool old_bucket_page_is_dirty = false;
     page_id_t new_bucket_page_id;
     HASH_TABLE_BUCKET_TYPE *new_bucket_page = reinterpret_cast<HASH_TABLE_BUCKET_TYPE *>(
         buffer_pool_manager_->NewPage(&new_bucket_page_id, nullptr)->GetData());
@@ -194,17 +188,18 @@ bool HASH_TABLE_TYPE::SplitInsert(Transaction *transaction, const KeyType &key, 
           new_bucket_page->RemoveAt(idx);
         } else {
           bucket_page->RemoveAt(idx);
+          old_bucket_page_is_dirty = true;
         }
       }
     }
+    page->WUnlatch();
     buffer_pool_manager_->UnpinPage(new_bucket_page_id, true, nullptr);  // new bucket page is dirty.
+    buffer_pool_manager_->UnpinPage(bucket_page_id, old_bucket_page_is_dirty, nullptr);
   }
-  table_latch_.WUnlock();
   buffer_pool_manager_->UnpinPage(directory_page_id_, true,
                                   nullptr);  // change sth like global depth, local depth, bucket_page_ids_
-  buffer_pool_manager_->UnpinPage(bucket_page_id, true, nullptr);  // change sth by removeat(idx)
-  // try insert!
-  return Insert(transaction, key, value);
+  table_latch_.WUnlock();
+  return Insert(transaction, key, value); // try insert!
 }
 
 /*****************************************************************************
@@ -215,22 +210,21 @@ bool HASH_TABLE_TYPE::Remove(Transaction *transaction, const KeyType &key, const
   table_latch_.WLock();
   HashTableDirectoryPage *dir_page = FetchDirectoryPage();
   uint32_t bucket_page_id = KeyToPageId(key, dir_page);
-  HASH_TABLE_BUCKET_TYPE *bucket_page = FetchBucketPage(bucket_page_id);
+  auto [page, bucket_page] = FetchBucketPage(bucket_page_id);
+  page->WLatch();
   bool success = bucket_page->Remove(key, value, comparator_);
   if (success && bucket_page->IsEmpty()) {
-    Merge(transaction, key, value);
+    page->WUnlatch();
     buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);
-    buffer_pool_manager_->UnpinPage(bucket_page_id, true, nullptr);
-    buffer_pool_manager_->DeletePage(bucket_page_id); //Remember to unpin before delete
+    //unpin the bucket_page first, becase in merge() we may delete the bucket_page.
+    buffer_pool_manager_->UnpinPage(bucket_page_id, success, nullptr);
+    Merge(transaction, key, value);
     table_latch_.WUnlock();
     return success;
   }
-  if (success) {
-    buffer_pool_manager_->UnpinPage(bucket_page_id, true, nullptr);
-  } else {
-    buffer_pool_manager_->UnpinPage(bucket_page_id, false, nullptr);
-  }
-  buffer_pool_manager_->UnpinPage(bucket_page_id, false, nullptr);
+  page->WUnlatch();
+  buffer_pool_manager_->UnpinPage(bucket_page_id, success, nullptr);
+  buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);
   table_latch_.WUnlock();
   return success;
 }
@@ -261,6 +255,7 @@ void HASH_TABLE_TYPE::Merge(Transaction *transaction, const KeyType &key, const 
       dir_page->SetBucketPageId(idx, image_bucket_page_id);
       dir_page->DecrLocalDepth(idx);
     }
+    buffer_pool_manager_->DeletePage(bucket_page_id); // Delete old_bucket_page
     buffer_pool_manager_->UnpinPage(directory_page_id_, true, nullptr);  // dirty is true
   } else {
     buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);  // dirty is false
