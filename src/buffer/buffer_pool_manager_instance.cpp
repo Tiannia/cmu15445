@@ -140,7 +140,7 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
   pages_[replacementPageId].is_dirty_ = false;
   pages_[replacementPageId].pin_count_ = 1;
   disk_manager_->ReadPage(page_id, pages_[replacementPageId].GetData());
-  // LOG_DEBUG("ReadPage! Page_id is %d", pages_[replacementPageId].GetPageId());
+  //LOG_DEBUG("ReadPage! Page_id is %d", pages_[replacementPageId].GetPageId());
   return &pages_[replacementPageId];
 }
 

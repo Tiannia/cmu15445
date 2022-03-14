@@ -34,7 +34,8 @@ class ExecutionEngine {
    * @param txn_mgr The transaction manager used by the execution engine
    * @param catalog The catalog used by the execution engine
    */
-  ExecutionEngine(BufferPoolManager *bpm, TransactionManager *txn_mgr, Catalog *catalog)
+  ExecutionEngine(BufferPoolManager *bpm, TransactionManager *txn_mgr,
+                  Catalog *catalog)
       : bpm_{bpm}, txn_mgr_{txn_mgr}, catalog_{catalog} {}
 
   DISALLOW_COPY_AND_MOVE(ExecutionEngine);
@@ -47,10 +48,11 @@ class ExecutionEngine {
    * @param exec_ctx The executor context in which the query executes
    * @return `true` if execution of the query plan succeeds, `false` otherwise
    */
-  bool Execute(const AbstractPlanNode *plan, std::vector<Tuple> *result_set, Transaction *txn,
-               ExecutorContext *exec_ctx) {
+  bool Execute(const AbstractPlanNode *plan, std::vector<Tuple> *result_set,
+               Transaction *txn, ExecutorContext *exec_ctx) {
     // Construct and executor for the plan
     auto executor = ExecutorFactory::CreateExecutor(exec_ctx, plan);
+    auto plan_type = plan->GetType();
 
     // Prepare the root executor
     executor->Init();
@@ -60,12 +62,16 @@ class ExecutionEngine {
       Tuple tuple;
       RID rid;
       while (executor->Next(&tuple, &rid)) {
-        if (result_set != nullptr) {
+        bool is_modified = plan_type != PlanType::Insert &&
+                           plan_type != PlanType::Update &&
+                           plan_type != PlanType::Delete;
+        if (result_set != nullptr && is_modified) {
           result_set->push_back(tuple);
         }
       }
     } catch (Exception &e) {
       // TODO(student): handle exceptions
+      return false;
     }
 
     return true;

@@ -15,10 +15,30 @@
 #include <memory>
 #include <utility>
 
+#include "common/util/hash_util.h"
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
 #include "execution/plans/hash_join_plan.h"
 #include "storage/table/tuple.h"
+
+namespace bustub {
+struct HashJoinKey {
+  Value key_;
+
+  bool operator==(const HashJoinKey &other) const {
+    return key_.CompareEquals(other.key_) == CmpBool::CmpTrue;
+  }
+};
+}  // namespace bustub
+
+namespace std {
+template <>
+struct hash<bustub::HashJoinKey> {
+  std::size_t operator()(const bustub::HashJoinKey &key) const {
+    return bustub::HashUtil::HashValue(&key.key_);
+  }
+};
+}  // namespace std
 
 namespace bustub {
 
@@ -31,11 +51,14 @@ class HashJoinExecutor : public AbstractExecutor {
    * Construct a new HashJoinExecutor instance.
    * @param exec_ctx The executor context
    * @param plan The HashJoin join plan to be executed
-   * @param left_child The child executor that produces tuples for the left side of join
-   * @param right_child The child executor that produces tuples for the right side of join
+   * @param left_child The child executor that produces tuples for the left side
+   * of join
+   * @param right_child The child executor that produces tuples for the right
+   * side of join
    */
   HashJoinExecutor(ExecutorContext *exec_ctx, const HashJoinPlanNode *plan,
-                   std::unique_ptr<AbstractExecutor> &&left_child, std::unique_ptr<AbstractExecutor> &&right_child);
+                   std::unique_ptr<AbstractExecutor> &&left_child,
+                   std::unique_ptr<AbstractExecutor> &&right_child);
 
   /** Initialize the join */
   void Init() override;
@@ -54,6 +77,16 @@ class HashJoinExecutor : public AbstractExecutor {
  private:
   /** The NestedLoopJoin plan node to be executed. */
   const HashJoinPlanNode *plan_;
+  /** The left child executor to obtain value from */
+  std::unique_ptr<AbstractExecutor> left_child_executor_;
+  /** The right child executor to obtain value from */
+  std::unique_ptr<AbstractExecutor> right_child_executor_;
+  /** The next index to be accessed in outer_table_buffer_ */
+  std::size_t next_pos_{0};
+  /** Hash table */ 
+  std::unordered_map<HashJoinKey, std::vector<std::vector<Value>>> hash_table_;
+  /** Buffer of any value of hash_table_ */
+  std::vector<std::vector<Value>> outer_table_buffer_;
 };
 
 }  // namespace bustub

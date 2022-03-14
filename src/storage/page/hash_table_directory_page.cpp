@@ -32,7 +32,6 @@ bool HashTableDirectoryPage::CanIncrGlobalDepth() {
   if (0x01 << (global_depth_ + 1) < DIRECTORY_ARRAY_SIZE) {
     return true;
   }
-
   return false;
 }
 
@@ -59,9 +58,9 @@ void HashTableDirectoryPage::SetLocalDepth(uint32_t bucket_idx, uint8_t local_de
 
 uint32_t HashTableDirectoryPage::GetLocalDepthMask(uint32_t bucket_idx) {return GetLocalHighBit(bucket_idx) - 1;}
 
-void HashTableDirectoryPage::IncrLocalDepth(uint32_t bucket_idx) {}
+void HashTableDirectoryPage::IncrLocalDepth(uint32_t bucket_idx) { local_depths_[bucket_idx]++; }
 
-void HashTableDirectoryPage::DecrLocalDepth(uint32_t bucket_idx) {}
+void HashTableDirectoryPage::DecrLocalDepth(uint32_t bucket_idx) { local_depths_[bucket_idx]--; }
 
 uint32_t HashTableDirectoryPage::GetLocalHighBit(uint32_t bucket_idx) { return (0x01 << GetLocalDepth(bucket_idx)); }
 

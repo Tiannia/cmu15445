@@ -15,8 +15,42 @@
 #include <memory>
 #include <utility>
 
+#include "common/util/hash_util.h"
 #include "execution/executors/abstract_executor.h"
 #include "execution/plans/distinct_plan.h"
+
+namespace bustub {
+
+struct DistinctKey {
+  std::vector<Value> keys_;
+
+  bool operator==(const DistinctKey &other) const {
+    for (uint32_t i = 0; i < other.keys_.size(); ++i) {
+      if (keys_[i].CompareEquals(other.keys_[i]) != CmpBool::CmpTrue) {
+        return false;
+      }
+    }
+    return true;
+  }
+};
+}  // namespace bustub
+
+namespace std {
+
+template <>
+struct hash<bustub::DistinctKey> {
+  std::size_t operator()(const bustub::DistinctKey &hash_keys) const {
+    size_t cur_hash = 0;
+    for (const auto &key : hash_keys.keys_) {
+      if (!key.IsNull()) {
+        cur_hash = bustub::HashUtil::CombineHashes(
+            cur_hash, bustub::HashUtil::HashValue(&key));
+      }
+    }
+    return cur_hash;
+  }
+};
+}  // namespace std
 
 namespace bustub {
 
@@ -53,5 +87,7 @@ class DistinctExecutor : public AbstractExecutor {
   const DistinctPlanNode *plan_;
   /** The child executor from which tuples are obtained */
   std::unique_ptr<AbstractExecutor> child_executor_;
+  /** Hash table for all columns in the output schema */
+  std::unordered_set<DistinctKey> hash_table_;
 };
 }  // namespace bustub

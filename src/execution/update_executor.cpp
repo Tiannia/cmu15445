@@ -30,17 +30,24 @@ void UpdateExecutor::Init() { child_executor_->Init(); }
 
 bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
   bool is_updated = false;
-  if(child_executor_->Next(tuple, rid)){
+  if (child_executor_->Next(tuple, rid)) {
     auto new_tuple = GenerateUpdatedTuple(*tuple);
-    if(table_info_->table_->UpdateTuple(new_tuple, *rid, exec_ctx_->GetTransaction())){
+    if (table_info_->table_->UpdateTuple(new_tuple, *rid,
+                                         exec_ctx_->GetTransaction())) {
       is_updated = true;
     }
-    if(is_updated && !index_info_array_.empty()){
-      for(auto index_info: index_info_array_){
-        const auto index_key = new_tuple.KeyFromTuple(table_info_->schema_, index_info->key_schema_, index_info->index_->GetKeyAttrs());
-        const auto old_index = tuple->KeyFromTuple(table_info_->schema_, index_info->key_schema_, index_info->index_->GetKeyAttrs());
-        index_info->index_->DeleteEntry(old_index, *rid, exec_ctx_->GetTransaction());
-        index_info->index_->InsertEntry(index_key, *rid, exec_ctx_->GetTransaction());
+    if (is_updated && !index_info_array_.empty()) {
+      for (auto index_info : index_info_array_) {
+        const auto index_key = new_tuple.KeyFromTuple(
+            table_info_->schema_, index_info->key_schema_,
+            index_info->index_->GetKeyAttrs());
+        const auto old_index =
+            tuple->KeyFromTuple(table_info_->schema_, index_info->key_schema_,
+                                index_info->index_->GetKeyAttrs());
+        index_info->index_->DeleteEntry(old_index, *rid,
+                                        exec_ctx_->GetTransaction());
+        index_info->index_->InsertEntry(index_key, *rid,
+                                        exec_ctx_->GetTransaction());
       }
     }
   }

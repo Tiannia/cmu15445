@@ -31,15 +31,13 @@ HASH_TABLE_TYPE::ExtendibleHashTable(const std::string &name, BufferPoolManager 
   auto directory_page = reinterpret_cast<HashTableDirectoryPage *>(
       buffer_pool_manager_->NewPage(&directory_page_id_, nullptr)->GetData());
   directory_page->SetPageId(directory_page_id_);
-  // 2. Get a new bucket_page (get to konw that global depth is zero, which mean just have one bucket_page)
   page_id_t bucket_page_id;
   buffer_pool_manager_->NewPage(&bucket_page_id, nullptr);
   // 3. add the bucket_page_id into the directory
   directory_page->SetBucketPageId(0, bucket_page_id);
-
   // 4. remember to unpin(isdirty -> true)
   buffer_pool_manager_->UnpinPage(directory_page_id_, true, nullptr);
-  buffer_pool_manager_->UnpinPage(bucket_page_id, true, nullptr);
+  buffer_pool_manager_->UnpinPage(bucket_page_id, false, nullptr);
 }
 
 /*****************************************************************************
@@ -161,7 +159,7 @@ bool HASH_TABLE_TYPE::SplitInsert(Transaction *transaction, const KeyType &key, 
   if (dir_page->GetLocalDepth(bucket_idx) < dir_page->GetGlobalDepth()) {
     page->WLatch();
     // We get a new bucket page
-    bool old_bucket_page_is_dirty = false;
+    bool bucket_page_is_modified = false;
     page_id_t new_bucket_page_id;
     HASH_TABLE_BUCKET_TYPE *new_bucket_page = reinterpret_cast<HASH_TABLE_BUCKET_TYPE *>(
         buffer_pool_manager_->NewPage(&new_bucket_page_id, nullptr)->GetData());
@@ -188,13 +186,13 @@ bool HASH_TABLE_TYPE::SplitInsert(Transaction *transaction, const KeyType &key, 
           new_bucket_page->RemoveAt(idx);
         } else {
           bucket_page->RemoveAt(idx);
-          old_bucket_page_is_dirty = true;
+          bucket_page_is_modified = true;
         }
       }
     }
     page->WUnlatch();
     buffer_pool_manager_->UnpinPage(new_bucket_page_id, true, nullptr);  // new bucket page is dirty.
-    buffer_pool_manager_->UnpinPage(bucket_page_id, old_bucket_page_is_dirty, nullptr);
+    buffer_pool_manager_->UnpinPage(bucket_page_id, bucket_page_is_modified, nullptr);
   }
   buffer_pool_manager_->UnpinPage(directory_page_id_, true,
                                   nullptr);  // change sth like global depth, local depth, bucket_page_ids_
@@ -216,7 +214,7 @@ bool HASH_TABLE_TYPE::Remove(Transaction *transaction, const KeyType &key, const
   if (success && bucket_page->IsEmpty()) {
     page->WUnlatch();
     buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);
-    //unpin the bucket_page first, becase in merge() we may delete the bucket_page.
+    //unpin the bucket_page first, because in merge() we may delete the bucket_page.
     buffer_pool_manager_->UnpinPage(bucket_page_id, success, nullptr);
     Merge(transaction, key, value);
     table_latch_.WUnlock();

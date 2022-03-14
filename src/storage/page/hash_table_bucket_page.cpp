@@ -41,7 +41,6 @@ bool HASH_TABLE_BUCKET_TYPE::Insert(KeyType key, ValueType value, KeyComparator 
     if (!cmp(array_[idx].first, key) && array_[idx].second == value) return false;
   }
   if (idx == BUCKET_ARRAY_SIZE) return false;
-  // LOG_DEBUG("BUCKET_ARRAY_SIZE: %d", static_cast<int>BUCKET_ARRAY_SIZE); --->496
   for (idx = 0; idx < BUCKET_ARRAY_SIZE; ++idx) {
     if (!IsReadable(idx)) {  // is empty(unreadable)
       array_[idx].first = key;
@@ -127,7 +126,7 @@ bool HASH_TABLE_BUCKET_TYPE::IsFull() {
 template <typename KeyType, typename ValueType, typename KeyComparator>
 uint32_t HASH_TABLE_BUCKET_TYPE::GetOccupiedSize(){
   uint32_t size = 0;
-  for(uint32_t idx; idx < BUCKET_ARRAY_SIZE; idx++){
+  for(uint32_t idx = 0; idx < BUCKET_ARRAY_SIZE; idx++){
     if(!IsOccupied(idx)){
       break;
     }
@@ -139,7 +138,7 @@ uint32_t HASH_TABLE_BUCKET_TYPE::GetOccupiedSize(){
 template <typename KeyType, typename ValueType, typename KeyComparator>
 uint32_t HASH_TABLE_BUCKET_TYPE::NumReadable() {
   uint32_t size = 0;
-  for(uint32_t idx; idx < BUCKET_ARRAY_SIZE; idx++){
+  for(uint32_t idx = 0; idx < BUCKET_ARRAY_SIZE; idx++){
     if(!IsOccupied(idx)){
       break;
     }

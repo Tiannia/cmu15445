@@ -75,7 +75,7 @@ Page *ParallelBufferPoolManager::NewPgImp(page_id_t *page_id) {
   int loop_index = index_;
   index_ = (index_ + 1) % num_instances_;
   Page *res = nullptr;
-  while (1) {
+  while (true) {
     res = BPMIs[loop_index]->NewPage(page_id);
     if(res != nullptr) return res;
     loop_index = (loop_index + 1) % num_instances_;
