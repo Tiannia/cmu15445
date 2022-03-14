@@ -50,30 +50,31 @@ AggregationExecutor::AggregationExecutor(
   }
 }
 
-//Because we insert {key, value} into aht_, so the iterator should be inited again.
+// Because we insert {key, value} into aht_, so the iterator should be inited
+// again.
 void AggregationExecutor::Init() { aht_iterator_ = aht_.Begin(); }
 
 bool AggregationExecutor::Next(Tuple *tuple, RID *rid) {
-  Value value{INVALID};
-  while (aht_iterator_ != aht_.End()) { //Traversal hash table
+  while (aht_iterator_ != aht_.End()) {  // Traversal hash table
     auto temp_iter = aht_iterator_;
     ++aht_iterator_;
     if (plan_->GetHaving() != nullptr) {
-      value = plan_->GetHaving()->EvaluateAggregate(
+      Value value = plan_->GetHaving()->EvaluateAggregate(
           temp_iter.Key().group_bys_, temp_iter.Val().aggregates_);
-    }
-    if (value.GetAs<bool>()) {
-      std::vector<Value> values;
-      values.reserve(plan_->OutputSchema()->GetColumnCount());
-      for (const auto &column : plan_->OutputSchema()->GetColumns()) {
-        auto agg_expr = reinterpret_cast<const AggregateValueExpression *>(
-            column.GetExpr());
-        values.push_back(agg_expr->EvaluateAggregate(
-            temp_iter.Key().group_bys_, temp_iter.Val().aggregates_));
+      if (!value.GetAs<bool>()) {
+        continue;
       }
-      *tuple = Tuple(values, plan_->OutputSchema());
-      return true;
     }
+    std::vector<Value> values;
+    values.reserve(plan_->OutputSchema()->GetColumnCount());
+    for (const auto &column : plan_->OutputSchema()->GetColumns()) {
+      auto agg_expr =
+          reinterpret_cast<const AggregateValueExpression *>(column.GetExpr());
+      values.push_back(agg_expr->EvaluateAggregate(
+          temp_iter.Key().group_bys_, temp_iter.Val().aggregates_));
+    }
+    *tuple = Tuple(values, plan_->OutputSchema());
+    return true;
   }
   return false;
 }
