@@ -37,7 +37,8 @@ class LockManager {
 
   class LockRequest {
    public:
-    LockRequest(txn_id_t txn_id, LockMode lock_mode) : txn_id_(txn_id), lock_mode_(lock_mode), granted_(false) {}
+    LockRequest(txn_id_t txn_id, LockMode lock_mode)
+        : txn_id_(txn_id), lock_mode_(lock_mode), granted_(false) {}
 
     txn_id_t txn_id_;
     LockMode lock_mode_;
@@ -49,8 +50,9 @@ class LockManager {
     std::list<LockRequest> request_queue_;
     // for notifying blocked transactions on this rid
     std::condition_variable cv_;
-    // txn_id of an upgrading transaction (if any)
-    txn_id_t upgrading_ = INVALID_TXN_ID;
+    bool upgrading_ = false;
+    bool is_writing_ = false;
+    int sharing_count_ = 0;
   };
 
  public:
@@ -104,11 +106,26 @@ class LockManager {
    */
   bool Unlock(Transaction *txn, const RID &rid);
 
+  /**
+   * Check if the status of the transaction is set to Aborted, and throw an
+   * exception if it happened.
+   */
+  void CheckAborted(Transaction *txn, LockRequestQueue *request_queue);
+
  private:
+  bool LockPrepare(Transaction *txn, const RID &rid);
+
+  std::list<LockRequest>::iterator GetIterator(
+      std::list<LockRequest> *request_queue, Transaction *txn);
+
+  void DeadlockPrevent(Transaction *txn, LockRequestQueue *request_queue);
+
   std::mutex latch_;
 
   /** Lock table for lock requests. */
   std::unordered_map<RID, LockRequestQueue> lock_table_;
+
+  std::unordered_map<txn_id_t, Transaction *> id_2_txn_;
 };
 
 }  // namespace bustub

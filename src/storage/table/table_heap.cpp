@@ -137,7 +137,7 @@ void TableHeap::ApplyDelete(const RID &rid, Transaction *txn) {
   // Delete the tuple from the page.
   page->WLatch();
   page->ApplyDelete(rid, txn, log_manager_);
-  lock_manager_->Unlock(txn, rid);
+  // lock_manager_->Unlock(txn, rid);
   page->WUnlatch();
   buffer_pool_manager_->UnpinPage(page->GetTablePageId(), true);
 }
