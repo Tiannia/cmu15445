@@ -181,7 +181,6 @@ void LockManager::CheckAborted(Transaction *txn,
 
 std::list<LockManager::LockRequest>::iterator LockManager::GetIterator(
     std::list<LockRequest> *request_queue, Transaction *txn) {
-  LOG_DEBUG("txn_id is %d", txn->GetTransactionId());
   for (auto iter = request_queue->begin(); iter != request_queue->end();
        ++iter) {
     if (iter->txn_id_ == txn->GetTransactionId()) {
