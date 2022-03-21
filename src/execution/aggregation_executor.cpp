@@ -30,7 +30,7 @@ AggregationExecutor::AggregationExecutor(
 // Because we insert {key, value} into aht_, so the iterator should be inited
 // again.
 void AggregationExecutor::Init() {
-  std::vector<Value> key;
+  auto key = aht_.GenerateInitialAggregateValue().aggregates_;
   bool is_group_by = !plan_->GetGroupBys().empty();
   const auto &agg_exprs = plan_->GetAggregates();
   Tuple tuple;
