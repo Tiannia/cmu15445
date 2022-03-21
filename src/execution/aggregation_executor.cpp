@@ -25,8 +25,12 @@ AggregationExecutor::AggregationExecutor(
       plan_(plan),
       child_(std::move(child)),
       aht_(plan_->GetAggregates(), plan_->GetAggregateTypes()),
-      aht_iterator_(aht_.Begin()) {
-  auto key = std::move(aht_.GenerateInitialAggregateValue().aggregates_);
+      aht_iterator_(aht_.Begin()) {}
+
+// Because we insert {key, value} into aht_, so the iterator should be inited
+// again.
+void AggregationExecutor::Init() {
+  std::vector<Value> key;
   bool is_group_by = !plan_->GetGroupBys().empty();
   const auto &agg_exprs = plan_->GetAggregates();
   Tuple tuple;
@@ -35,7 +39,7 @@ AggregationExecutor::AggregationExecutor(
   while (child_->Next(&tuple, &rid)) {
     if (is_group_by) {
       const auto &group_bys = plan_->GetGroupBys();
-      key.clear();
+      std::vector<Value> key;
       key.reserve(group_bys.size());
       for (auto group_by : group_bys) {
         key.push_back(group_by->Evaluate(&tuple, child_->GetOutputSchema()));
@@ -48,11 +52,8 @@ AggregationExecutor::AggregationExecutor(
     }
     aht_.InsertCombine(AggregateKey{key}, AggregateValue{values});
   }
+  aht_iterator_ = aht_.Begin();
 }
-
-// Because we insert {key, value} into aht_, so the iterator should be inited
-// again.
-void AggregationExecutor::Init() { aht_iterator_ = aht_.Begin(); }
 
 bool AggregationExecutor::Next(Tuple *tuple, RID *rid) {
   while (aht_iterator_ != aht_.End()) {  // Traversal hash table
